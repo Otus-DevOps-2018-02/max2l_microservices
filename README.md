@@ -76,6 +76,7 @@ docker system df
  - Создан шаблон для packer
  - Создана конфигурация для поднятия нескольких инстансев
  - Созданы плейбуки с использованием динамических инвентори для установки докера и запуска там нескольких приложений.
+ - Манивес для деплоя dashboard находится в файле `kubernetes/reddit/kubernetes-dashboard.yaml`. Он взят по ссылке https://docs.giantswarm.io/guides/install-kubernetes-dashboard/#deploying-dashboard 
 
 ### Как запустить проект:
  - Проверка статуса Docker машин
@@ -668,4 +669,192 @@ gcloud compute firewall-rules create zipkin-default --allow tcp:9411
     ansible-playbook kubernetes/ansible/create_kubernates_gcp.yml
     ansible-playbook kubernetes/ansible/remove_kubernates_gcp.yml 
     ```
+---
+## Homework 23. Kubernetes.Controllers,Security.
+### В процессе сделано:
+  - Развернуто локальное окружение для работы с `Kubernetes`.
+    - Установлен `kubectl`.
+    - Установлен `Minikube`.
+    - Запушен Minukube-кластер.
+    - Произведена проверка работы кластера.
+    - Изучена конфигурация `kubectl`.
+    - Созданы Deployment ресурсы для микросервисов приложения `Puma`.
+    - Все микросервисы запушены в `Kubernetes` кластере.
+    - Настроена взаимосвязь с использованием `Services` между микросервисами приложения.
+    - Настроены переменные окружения для взаимодействия контейнеров с контейнером базы `mongodb`.
+    - Настроено взаимодействие с микросервисом `ui` из внешней сети.
+    - Произведен анализ работы кластера используя `dashboard`
+    - Настроен отдельный `Namespace` для запуска в нем микросервисов.
+    - Добавлена информация о `Namespace` в `UI`
+  - Развернут `Kubernetes` в GKE.
+    - Создан кластер в GCP с использованием web консоли.
+    - Настроено подключение minikube к кластеру `Kubernetes`.
+    - Настроены правила фаервола для подключению к приложению `Puma` из внешней сети.
+  - Запущен reddit в `Kubernetes`.
+  - Произведен запуск `Dashboard`и анализ работы кластера.
+  - Настроен запуск кластера GCP c использованием `terraform`
+
+### Как запустить проект:
+  - Запуск микросервисов в кластере.
+  ```
+  kubectl apply -f ui-deployment.yml
+  kubectl apply -f post-deployment.yml
+  kubectl apply -f comment-deployment.yml
+  kubectl apply -f mongo-deployment.yml
+  ```
+  - Проверка статуса депроя микросервисов
+  ```
+  kubectl get deployment
+  ```
+  - Просмотр pods с использованием `selector`
+  ```
+  kubectl get pods --selector component=ui
+  ```
+  - Проблос порта на локальную машину.
+  ```
+  kubectl port-forward <pod-name> 8080:9292
+  ```
+  - Просмотр `Services`.
+  ```
+  kubectl describe service comment
+  ```
+  - Запуск команд внутри pods.
+  ```
+  kubectl exec -ti <pod-name> nslookup comment
+  ```
+  - Просмотр событий внутри pod
+  ```
+  kubectl logs <pod-name>
+  ``` 
+  - Удаление сервисов.
+  ```
+  kubectl delete -f mongodb-service.yml
+  kubectl delete service mongodb
+  ```
+  - Запуск микросервиса `UI` в веб браузере.
+  ```
+  minikube service ui
+  ```
+  - Просмотр всех сервисов.
+  ```
+  minikube services list
+  ```
+  - Просмотр всех расширений `Minicube`
+  ```
+  minikube addons list
+  ```
+  - Просмотр всех объектов в namespase `kube-sysytem`
+  ```
+  kubectl get all -n kube-system --selector k8s-app=kubernetes-dashboard
+  ```
+  - Запуск dashboard.
+  ```
+  minikube service kubernetes-dashboard -n kube-system
+  ```
+  - Деплой всех манифест файлов.
+  ```
+  kubectl apply -f ./kubernetes/reddit
+  ```
+  - Запуск `Puma` в `namespace` dev
+  ```
+  kubectl apply -n dev -f
+  minikube service ui -n dev
+  ```
+  - Определение внешнего IP и порта для соединения с кластером.
+  ```
+  kubectl get nodes -o wide
+  kubectl describe service ui|grep NodePort
+  ```
+  - Запуск кластера `Kubernetes` с использованием `terraform`.
+  ```
+  cd kubernetes/terraform/
+  terraform apply
+  ```
+---
+## Homework 24. Kubernetes. Network. Storage.
+### В процессе сделано:
+  - Изучено назначение и принцип работы компонентов `kube-dns`, `kubenet` и `kube-proxy`
+  - Произведена настройка и проверка работы приложения `Puma` с использованием балансировщика GCP.
+  - Произведена настройка `LoadBalancer` с использованием контролера для балансировки `Ingress Controller`.
+  - Произведена терминация TLS трафика на балансировщике, для этого:
+    - Создан само подписанный сертификат.
+    - Сертификат загружен в кластер `Kubernetes`.
+    - Произведена проверка загруженного сертификата.
+    - Произведена настройка `Ingress` балансировщика для работы только с https трафиком.
+    - Созданный объект `Secret` описан в виде манифеста.
+  - Для проекта `docker-201806` в GCE включен `network-policy`.
+  - Произведена настройка политик ограничения сетевого трафика между микросервисами приложения `Puma`.
+  - Произведена настройка работы базы данных `MongoDB` с использованием различных видов томов `Volumes`.
+  - Изучены особенности различных типов томов и механизмов работы с дисковыми хранилищами `emptyDir`, `gcePersistentDisk`, `PersistentVolume`.
+  - Настроено динамическое выделение `Volumes` с использованием различных `StorageClass`.
+### Как запустить проект:
+  - После настройки работы приложения с использованием балансировщика `GCP` необходимо:
+    - Узнать внешний IP для доступа к балансировщику.
+      ```
+      kubectl get service  -n dev --selector component=ui
+      ```
+    - Приложение `Puma` должно быть доступно по url `http://external_lb_ip`.
+    - В web консоли GCP будет создано правило для балансировки.
+  - Просмотр работы `Ingress Controller`.
+    ```
+    kubectl get ingress -n dev
+    ```
+  -  Настройка терминации https трафика.
+      - Генерация сертификата
+        ```
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj "/CN=external_ingress_ip"
+        ```
+      - Загрузка сертификата в кластер `Kubernetes`
+        ```
+        kubectl create secret tls ui-ingress --key tls.key --cert tls.crt -n dev
+        ```
+      -  Проверка загрузки сертификата.
+          ```
+          kubectl describe secret ui-ingress -n dev
+          ```
+      -  Применение настроек балансировщика описанных в манифест файле.
+          ```
+          kubectl delete ingress ui -n dev
+          kubectl apply -f ui-ingress.yml -n dev
+          ```
+  - Для проверки настройки терминации https можно использовать url https://external_lb_ip
+  - Включение `network-policy` для GKE
+   ```
+   gcloud beta container clusters update   --zone=us-central1-a --update-addons=NetworkPolicy=ENABLED
+   gcloud beta container clusters update  docker-201806 --zone=us-central1-a  --enable-network-policy
+   ```
+  - Применение политик `network-policy`
+    ```
+    kubectl apply -f mongo-network-policy.yml -n dev
+    ```
+  - Создание диска в GCP
+    ```
+    gcloud compute disks create --size=25GB --zone=us-central1-a reddit-mongo-disk
+    ```
+  - Монтирование  диска к POD-ам.
+    ```
+    kubectl apply -f mongo-deployment.yml -n dev
+    ```
+  - Добавление `PersistentVolume` в кластер.
+    ```
+    kubectl apply -f mongo-volume.yml -n dev
+    ```
+  - Добавление запроса `PersistentVolumeClaim` в кластер.
+    ```
+    kubectl apply -f mongo-claim.yml -n dev
+    ```
+  - Подключение `PersistentVolumeClaim` к нашим Pod-ам.
+    ```
+    kubectl apply -f mongo-deployment.yml -n dev
+    ```
+  - Добавление `StorageClass` в крастер.
+    ```
+    kubectl apply -f storage-fast.yml -n dev
+    kubectl apply -f mongo-claim-dynamic.yml -n dev
+    kubectl apply -f mongo-deployment.yml -n dev
+    ```
+  - Просмотр созданных `Persistent Volumes`.
+  ```
+  kubectl get persistentvolume -n dev
+  ```
 ---

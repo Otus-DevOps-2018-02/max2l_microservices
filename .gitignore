@@ -6,3 +6,8 @@ docker-3eb4b55515b0.json
 .env
 *.retry
 terraform/files/deploy.sh
+*.tfstate
+*.backup
+.terraform
+variables.tf
+/the_hard_way/
