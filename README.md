@@ -854,6 +854,96 @@ gcloud compute firewall-rules create zipkin-default --allow tcp:9411
     kubectl apply -f mongo-deployment.yml -n dev
     ```
   - Просмотр созданных `Persistent Volumes`.
+    ```
+    kubectl get persistentvolume -n dev
+    ```
+---
+## Homework 25. Интеграция Kubernetes в GitlabCI.
+### В процессе сделано:
+  - Произведена установка клиентской и серверной части `Helm`.
+  - Подготовлена структура файлов для установки `Chart` для `UI` компонента.
+  - Произведена установка `Chart` для `UI` компонента.
+  - `Chart` для `UI` изменен для запуска нескольких ресурсов.
+  - Произведена шаблонизация сущностей используемых для компонента `UI`.
+  - Установлено несколько релизов `UI`.
+  - Произведена проверка работы запущенных `UI` релизов.
+  - Добавлены пользовательские переменные для `Chart` компонента `UI`.
+  - Настроены `Charts` для компонентов `POST` и `COMMENT`.
+  - Произведена интеграция `Charts` с `MongoDB`.
+  - Созданы `helpers` и функции `templates` для всех `Charts`.
+  - Создан единый `Chart` `reddit` который объединит все ранее созданные компоненты.
+  - Добавлен `Chart` из общедоступного репозитория `stable/mongodb`.
+  - Определены переменные окружения и настроенно взаимодействия между `Chard's`.
+  - Добавлен новый пул узлов для разворачивания `gitlab`.
+  - Произведена установка `gitlab` 
+  - Созданы проекты для работы с микросервисами.
+  - Настроен задачи CI `Build`,`Test`,`Release` для проектов `UI`, `Post`, `Comment`.
+  - Произведена проверка корректности сборки образов.
+  - Произведена настройка конфигурации ингреса и values для микросервиса `UI`.
+  - Настроена запуск приложения в отдельном окружении для при комите в бранче отличном от мастера.
+  - Настроено удаление отдельного созданного временного окружения.
+  - Созданы 2 окружения (`Staging` и `Production`) в gitlab.
+### Как запустить проект:
+  - Запуск tiller-сервера
+    ```
+    kubectl apply -f tiller.yml
+    helm init --service-account tiller
+    ```
+  - Проверка установки серверной части `Helm`.
+    ```
+    kubectl get pods -n kube-system --selector app=helm
+    ```
+  - Усановка `Chart`.
+    ```
+    helm install --name test-ui-1 ui/
+    ```
+  - Проверка установки `Chart`.
+    ```
+    helm ls
+    ```
+  - Установка нескольких релизов `UI`.
+    ```
+    helm install ui --name ui-1
+    helm install ui --name ui-2
+    helm install ui --name ui-3
+    ```
+  - Проверка созданных ингрессов.
+    ```
+    kubectl get ingress
+    ```
+  - Обновление установленных релизов.
+    ```
+    helm upgrade ui-1 ui/
+    helm upgrade ui-2 ui/
+    helm upgrade ui-3 ui/
+    ```
+  - Загрузить зависимости единого `Chart` `reddit`.
+    ```
+    helm dep update ./reddit
+    ```
+  - Поиск `Charts` в общедоступном репозитории.
+    ```
+    helm search mongo
+    ```
+  - Установка приложения с использованием общедоступного `Charts`
+    ```
+    helm install reddit --name reddit-test
+    ```
+  - Обновление релиза.
+    ```
+    helm upgrade reddit-test ./reddit
+    ```
+  - Установка `gitlab`
+    ```
+    helm install --name gitlab . -f values.yaml
+    ```
+  - Проверка запушенных pod's приложения `gitlab`
+    ```
+    kubectl get pods
+    ```
+---
+
+=======
   ```
   kubectl get persistentvolume -n dev
   ```
