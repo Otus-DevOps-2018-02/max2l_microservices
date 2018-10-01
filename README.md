@@ -942,9 +942,68 @@ gcloud compute firewall-rules create zipkin-default --allow tcp:9411
     kubectl get pods
     ```
 ---
+## Homework 26. Kubernetes. Мониторинг и логирование.
+### В процессе сделано:
+  - Произведена установка ingress-контроллера `nginx`.
+  - Произведена загрузка и установка `Prometheus`.
+  - Произведен анализ `Targets` `Prometheus` найденных с помощью `service discovery`.
+  - Подключен сервис `kube-state-metrics` входящий в чарт `Prometheus`.
+  - Подключены поды `node-exporter`.
+  - Произведена проверка сбора метрик.
+  - Произведен запуск приложения из helm чарта `reddit`.
+  - Настроен `service discovery` для сбора метрик приложения `Puma`.
+  - Настроено корректное отображение Labels.
+  - Произведено отделение target-ов компонент друг от друга по окружениям и по компонентам.
+  - Job `reddit-endpoints` разделен на 3 jobs `post-endpoints`, `comment-endpoints` и `ui-endpoints`.
+  - С помощью `helm` произведена установка `Grafana`.
+  - Добавлен dashboard `Kubernetes cluster monitoring (via Prometheus)` для отслеживания состояния ресурсов `k8s`.
+  - Добавлены собственные dashboards для отображения графиков приложения `Puma`.
+  - Настроен Templating и произведена параметризация dashboards для разбивки отображения графиков по различным средам.
+  - Добавлен dashboard `Kubernetes Deployment metrics`.
+  - Запушен стек `EFK`.
+  - Установлена `Kibana` из helm чарта.
+  - Произведен анализ логов формируемых кластером `k8s`.
 
-=======
-  ```
-  kubectl get persistentvolume -n dev
-  ```
+### Как запустить проект:
+  - Установка ingress-контроллера `nginx`.
+    ```
+    helm install stable/nginx-ingress --name nginx
+    ```
+  - Проверка установленного ingress-контроллера nginx.
+    ```
+    kubectl get svc
+    ```
+  - Загрузка `Prometheus`.
+    ```
+    cd kubernetes/charts && helm fetch —-untar stable/prometheus
+    ```
+  - Запуск `Prometheus`.
+    ```
+    helm upgrade prom . -f custom_values.yml --install
+    ```
+  - Запуск приложения из helm чарта `reddit`.
+    ```
+    helm upgrade reddit-test ./reddit —install
+    helm upgrade production --namespace production ./reddit --install
+    helm upgrade staging --namespace staging ./reddit —install
+    ```
+  - Установка `Grafana`.
+    ```
+    helm upgrade --install grafana stable/grafana --set "server.adminPassword=admin" \
+    --set "server.service.type=NodePort" \
+    --set "server.ingress.enabled=true" \
+    --set "server.ingress.hosts={reddit-grafana}"
+    ```
+  - Запуск `EFK` стека.
+    ```
+    kubectl apply -f ./efk
+    ```
+  - Установка Kibana из helm чарта.
+    ```
+    helm upgrade --install kibana stable/kibana \
+    --set "ingress.enabled=true" \
+    --set "ingress.hosts={reddit-kibana}" \
+    --set "env.ELASTICSEARCH_URL=http://elasticsearch-logging:9200" \
+    --version 0.1.1
+    ```
 ---
